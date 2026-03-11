@@ -56,6 +56,55 @@ Frontend environment value:
 
 - `VITE_API_BASE_URL=http://127.0.0.1:8000/api`
 
+## Bonus: Cloud Hosting Access
+
+To complete the bonus requirement (system accessible after hosting), deploy backend and frontend, then share URLs and credentials.
+
+### 1. Backend environment variable mapping
+
+If your cloud provider gives a managed PostgreSQL service variable, create this variable in your backend service:
+
+- `DATABASE_URL=${{ Postgres.DATABASE_URL }}`
+
+Also set:
+
+- `APP_ENV=production`
+- `APP_DEBUG=false`
+- `DB_CONNECTION=pgsql`
+
+Laravel already supports `DATABASE_URL` in `config/database.php`, so no extra code changes are required.
+
+### 2. Backend deploy commands
+
+Run these on deploy/release:
+
+```bash
+php artisan key:generate --force
+php artisan migrate --force
+php artisan db:seed --force
+php artisan storage:link
+```
+
+### 3. Frontend production variable
+
+Set in frontend hosting service:
+
+- `VITE_API_BASE_URL=https://<your-backend-domain>/api`
+
+### 4. What to submit as proof of access
+
+- Frontend URL (live)
+- Backend API URL (live)
+- Admin credentials
+- Staff credentials
+
+Quick verification steps:
+
+- Login succeeds from hosted frontend
+- Create cupboard/place/item succeeds
+- Borrow and return actions succeed
+- Admin can open activity logs
+
 ## Implemented Backend Modules
 
 - Login/logout authentication with Sanctum
