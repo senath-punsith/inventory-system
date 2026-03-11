@@ -1,0 +1,106 @@
+Table users {
+  id bigserial [pk, increment]
+  name varchar
+  email varchar [unique]
+  role varchar [note: "admin | staff"]
+  email_verified_at timestamp [null]
+  password varchar
+  remember_token varchar [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table cupboards {
+  id bigserial [pk, increment]
+  name varchar
+  code varchar [unique]
+  description text [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table places {
+  id bigserial [pk, increment]
+  cupboard_id bigint
+  name varchar
+  code varchar [unique]
+  description text [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table items {
+  id bigserial [pk, increment]
+  place_id bigint
+  name varchar
+  code varchar [unique]
+  quantity int
+  serial_number varchar [null]
+  image_path varchar [null]
+  description text [null]
+  status varchar [note: "in_store | borrowed | damaged | missing"]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table borrowings {
+  id bigserial [pk, increment]
+  item_id bigint
+  processed_by bigint
+  borrower_name varchar
+  borrower_contact varchar
+  borrow_date date
+  expected_return_date date [null]
+  quantity_borrowed int
+  status varchar [note: "borrowed | returned"]
+  returned_at timestamp [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table activity_logs {
+  id bigserial [pk, increment]
+  user_id bigint [null]
+  action varchar
+  entity_type varchar
+  entity_id bigint [null]
+  old_values json [null]
+  new_values json [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table personal_access_tokens {
+  id bigserial [pk, increment]
+  tokenable_type varchar
+  tokenable_id bigint
+  name varchar
+  token varchar [unique]
+  abilities text [null]
+  last_used_at timestamp [null]
+  expires_at timestamp [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table password_resets {
+  email varchar [pk]
+  token varchar
+  created_at timestamp [null]
+}
+
+Table failed_jobs {
+  id bigserial [pk, increment]
+  uuid varchar [unique]
+  connection text
+  queue text
+  payload text
+  exception text
+  failed_at timestamp
+}
+
+Ref: places.cupboard_id > cupboards.id [delete: cascade]
+Ref: items.place_id > places.id [delete: cascade]
+Ref: borrowings.item_id > items.id [delete: cascade]
+Ref: borrowings.processed_by > users.id
+Ref: activity_logs.user_id > users.id [delete: set null]
