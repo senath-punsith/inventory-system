@@ -52,6 +52,7 @@ class ItemController extends Controller
             'place_id' => ['sometimes', 'exists:places,id'],
             'name' => ['sometimes', 'string', 'max:255'],
             'code' => ['sometimes', 'string', 'max:100', 'unique:items,code,' . $item->id],
+            'quantity' => ['sometimes', 'integer', 'min:0'],
             'serial_number' => ['nullable', 'string', 'max:255'],
             'image' => ['nullable', 'image', 'max:5120'],
             'description' => ['nullable', 'string'],

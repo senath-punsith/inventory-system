@@ -33,12 +33,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/borrowings', [BorrowingController::class, 'index']);
     Route::post('/borrowings', [BorrowingController::class, 'store']);
+    Route::put('/borrowings/{borrowing}', [BorrowingController::class, 'update']);
+    Route::delete('/borrowings/{borrowing}', [BorrowingController::class, 'destroy']);
     Route::post('/borrowings/{borrowing}/return', [BorrowingController::class, 'returnItem']);
 
     Route::middleware('admin')->group(function () {
         Route::get('/users', [UserController::class, 'index']);
         Route::post('/users', [UserController::class, 'store']);
         Route::patch('/users/{user}/role', [UserController::class, 'updateRole']);
+        Route::delete('/users/{user}', [UserController::class, 'destroy']);
 
         Route::get('/activity-logs', [ActivityLogController::class, 'index']);
     });

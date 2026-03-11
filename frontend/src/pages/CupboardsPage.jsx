@@ -3,6 +3,9 @@ import { api } from '../api/client';
 
 export default function CupboardsPage() {
   const [rows, setRows] = useState([]);
+  const [error, setError] = useState('');
+  const [busyId, setBusyId] = useState(null);
+  const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ name: '', code: '', description: '' });
 
   const load = async () => {
@@ -16,14 +19,66 @@ export default function CupboardsPage() {
 
   const submit = async (event) => {
     event.preventDefault();
-    await api.post('/cupboards', form);
+    setError('');
+
+    try {
+      if (editingId) {
+        await api.put(`/cupboards/${editingId}`, form);
+      } else {
+        await api.post('/cupboards', form);
+      }
+
+      setForm({ name: '', code: '', description: '' });
+      setEditingId(null);
+      await load();
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'Failed to save cupboard.');
+    }
+  };
+
+  const startEdit = (row) => {
+    setError('');
+    setEditingId(row.id);
+    setForm({
+      name: row.name || '',
+      code: row.code || '',
+      description: row.description || '',
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
     setForm({ name: '', code: '', description: '' });
-    await load();
+  };
+
+  const deleteCupboard = async (id, name) => {
+    const ok = window.confirm(`Delete cupboard "${name}"? This will remove linked places and items.`);
+    if (!ok) {
+      return;
+    }
+
+    setError('');
+    setBusyId(id);
+
+    try {
+      await api.delete(`/cupboards/${id}`);
+
+      if (editingId === id) {
+        cancelEdit();
+      }
+
+      await load();
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'Failed to delete cupboard.');
+    } finally {
+      setBusyId(null);
+    }
   };
 
   return (
     <section>
       <h2>Cupboards</h2>
+      {error && <div className="error-box">{error}</div>}
       <form className="inline-form" onSubmit={submit}>
         <input
           placeholder="Name"
@@ -43,8 +98,13 @@ export default function CupboardsPage() {
           onChange={(e) => setForm({ ...form, description: e.target.value })}
         />
         <button className="btn-primary" type="submit">
-          Add
+          {editingId ? 'Save' : 'Add'}
         </button>
+        {editingId ? (
+          <button className="btn-outline" type="button" onClick={cancelEdit}>
+            Cancel
+          </button>
+        ) : null}
       </form>
       <div className="table-wrap">
         <table>
@@ -53,6 +113,7 @@ export default function CupboardsPage() {
               <th>Name</th>
               <th>Code</th>
               <th>Places</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -61,6 +122,25 @@ export default function CupboardsPage() {
                 <td>{row.name}</td>
                 <td>{row.code}</td>
                 <td>{row.places_count}</td>
+                <td>
+                  <button
+                    className="btn-chip"
+                    type="button"
+                    onClick={() => startEdit(row)}
+                    disabled={busyId === row.id}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="btn-chip"
+                    type="button"
+                    onClick={() => deleteCupboard(row.id, row.name)}
+                    disabled={busyId === row.id}
+                    style={{ color: '#7e2a1e', borderColor: '#f4b2a2' }}
+                  >
+                    Delete
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

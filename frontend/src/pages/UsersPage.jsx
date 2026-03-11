@@ -33,6 +33,21 @@ export default function UsersPage() {
     await load();
   };
 
+  const removeUser = async (id, email) => {
+    const confirmed = window.confirm(`Remove user ${email}?`);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await api.delete(`/users/${id}`);
+      setError('');
+      await load();
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'Failed to remove user.');
+    }
+  };
+
   return (
     <section>
       <h2>User Management</h2>
@@ -76,6 +91,7 @@ export default function UsersPage() {
                   <th>Email</th>
                   <th>Role</th>
                   <th>Set Role</th>
+                  <th>Remove</th>
                 </tr>
               </thead>
               <tbody>
@@ -90,6 +106,11 @@ export default function UsersPage() {
                       </button>
                       <button className="btn-chip" onClick={() => updateRole(row.id, 'admin')} type="button">
                         Admin
+                      </button>
+                    </td>
+                    <td>
+                      <button className="btn-chip" onClick={() => removeUser(row.id, row.email)} type="button">
+                        Remove
                       </button>
                     </td>
                   </tr>

@@ -4,6 +4,9 @@ import { api } from '../api/client';
 export default function PlacesPage() {
   const [rows, setRows] = useState([]);
   const [cupboards, setCupboards] = useState([]);
+  const [error, setError] = useState('');
+  const [busyId, setBusyId] = useState(null);
+  const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ cupboard_id: '', name: '', code: '', description: '' });
 
   const load = async () => {
@@ -21,14 +24,67 @@ export default function PlacesPage() {
 
   const submit = async (event) => {
     event.preventDefault();
-    await api.post('/places', form);
+    setError('');
+
+    try {
+      if (editingId) {
+        await api.put(`/places/${editingId}`, form);
+      } else {
+        await api.post('/places', form);
+      }
+
+      setForm({ cupboard_id: '', name: '', code: '', description: '' });
+      setEditingId(null);
+      await load();
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'Failed to save place.');
+    }
+  };
+
+  const startEdit = (row) => {
+    setError('');
+    setEditingId(row.id);
+    setForm({
+      cupboard_id: row.cupboard_id ? String(row.cupboard_id) : '',
+      name: row.name || '',
+      code: row.code || '',
+      description: row.description || '',
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
     setForm({ cupboard_id: '', name: '', code: '', description: '' });
-    await load();
+  };
+
+  const deletePlace = async (id, name) => {
+    const ok = window.confirm(`Delete place "${name}"? This will remove linked items.`);
+    if (!ok) {
+      return;
+    }
+
+    setError('');
+    setBusyId(id);
+
+    try {
+      await api.delete(`/places/${id}`);
+
+      if (editingId === id) {
+        cancelEdit();
+      }
+
+      await load();
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'Failed to delete place.');
+    } finally {
+      setBusyId(null);
+    }
   };
 
   return (
     <section>
       <h2>Places</h2>
+      {error && <div className="error-box">{error}</div>}
       <form className="inline-form" onSubmit={submit}>
         <select
           required
@@ -55,8 +111,13 @@ export default function PlacesPage() {
           required
         />
         <button className="btn-primary" type="submit">
-          Add
+          {editingId ? 'Save' : 'Add'}
         </button>
+        {editingId ? (
+          <button className="btn-outline" type="button" onClick={cancelEdit}>
+            Cancel
+          </button>
+        ) : null}
       </form>
       <div className="table-wrap">
         <table>
@@ -65,6 +126,7 @@ export default function PlacesPage() {
               <th>Name</th>
               <th>Code</th>
               <th>Cupboard</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -73,6 +135,25 @@ export default function PlacesPage() {
                 <td>{row.name}</td>
                 <td>{row.code}</td>
                 <td>{row.cupboard?.name}</td>
+                <td>
+                  <button
+                    className="btn-chip"
+                    type="button"
+                    onClick={() => startEdit(row)}
+                    disabled={busyId === row.id}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="btn-chip"
+                    type="button"
+                    onClick={() => deletePlace(row.id, row.name)}
+                    disabled={busyId === row.id}
+                    style={{ color: '#7e2a1e', borderColor: '#f4b2a2' }}
+                  >
+                    Delete
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

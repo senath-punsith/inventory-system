@@ -106,4 +106,97 @@ class BorrowingController extends Controller
 
         return response()->json($borrowing->fresh()->load(['item', 'processedBy']));
     }
+
+    public function update(Request $request, Borrowing $borrowing)
+    {
+        $data = $request->validate([
+            'borrower_name' => ['sometimes', 'string', 'max:255'],
+            'borrower_contact' => ['sometimes', 'string', 'max:255'],
+            'borrow_date' => ['sometimes', 'date'],
+            'expected_return_date' => ['nullable', 'date', 'after_or_equal:borrow_date'],
+            'quantity_borrowed' => ['sometimes', 'integer', 'min:1'],
+        ]);
+
+        $updatedBorrowing = DB::transaction(function () use ($borrowing, $data) {
+            $oldBorrowing = $borrowing->toArray();
+
+            if ($borrowing->status === 'returned' && array_key_exists('quantity_borrowed', $data)
+                && (int) $data['quantity_borrowed'] !== (int) $borrowing->quantity_borrowed) {
+                abort(422, 'Cannot change quantity for a returned record.');
+            }
+
+            if ($borrowing->status === 'borrowed' && array_key_exists('quantity_borrowed', $data)) {
+                $item = Item::query()->lockForUpdate()->findOrFail($borrowing->item_id);
+
+                $newQuantityBorrowed = (int) $data['quantity_borrowed'];
+                $delta = $newQuantityBorrowed - (int) $borrowing->quantity_borrowed;
+
+                if ($delta > 0 && $item->quantity < $delta) {
+                    abort(422, 'Insufficient stock to increase borrowed quantity.');
+                }
+
+                if ($delta !== 0) {
+                    $beforeItem = ['quantity' => $item->quantity, 'status' => $item->status];
+
+                    $item->update([
+                        'quantity' => $item->quantity - $delta,
+                        'status' => 'borrowed',
+                    ]);
+
+                    ActivityLogger::log(
+                        'item_quantity_changed',
+                        'item',
+                        $item->id,
+                        $beforeItem,
+                        ['quantity' => $item->quantity, 'status' => $item->status]
+                    );
+                }
+            }
+
+            $borrowing->update($data);
+
+            ActivityLogger::log('borrowing_updated', 'borrowing', $borrowing->id, $oldBorrowing, $borrowing->fresh()->toArray());
+
+            return $borrowing->fresh()->load(['item', 'processedBy']);
+        });
+
+        return response()->json($updatedBorrowing);
+    }
+
+    public function destroy(Borrowing $borrowing)
+    {
+        DB::transaction(function () use ($borrowing) {
+            $oldBorrowing = $borrowing->toArray();
+
+            if ($borrowing->status === 'borrowed') {
+                $item = Item::query()->lockForUpdate()->findOrFail($borrowing->item_id);
+                $beforeItem = ['quantity' => $item->quantity, 'status' => $item->status];
+
+                $activeBorrowings = Borrowing::query()
+                    ->where('item_id', $item->id)
+                    ->where('status', 'borrowed')
+                    ->where('id', '!=', $borrowing->id)
+                    ->count();
+
+                $item->update([
+                    'quantity' => $item->quantity + $borrowing->quantity_borrowed,
+                    'status' => $activeBorrowings > 0 ? 'borrowed' : 'in_store',
+                ]);
+
+                ActivityLogger::log(
+                    'item_quantity_changed',
+                    'item',
+                    $item->id,
+                    $beforeItem,
+                    ['quantity' => $item->quantity, 'status' => $item->status]
+                );
+            }
+
+            $borrowing->delete();
+
+            ActivityLogger::log('borrowing_deleted', 'borrowing', $borrowing->id, $oldBorrowing, null);
+        });
+
+        return response()->json([], 204);
+    }
 }

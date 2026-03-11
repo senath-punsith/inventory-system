@@ -6,6 +6,8 @@ export default function ItemsPage() {
   const [places, setPlaces] = useState([]);
   const [error, setError] = useState('');
   const [busyItemId, setBusyItemId] = useState(null);
+  const [editingItemId, setEditingItemId] = useState(null);
+  const [fileInputKey, setFileInputKey] = useState(0);
   const [form, setForm] = useState({
     place_id: '',
     name: '',
@@ -45,6 +47,21 @@ export default function ItemsPage() {
     load().catch(() => undefined);
   }, []);
 
+  const resetForm = () => {
+    setEditingItemId(null);
+    setForm({
+      place_id: '',
+      name: '',
+      code: '',
+      quantity: 0,
+      status: 'in_store',
+      serial_number: '',
+      description: '',
+      image: null,
+    });
+    setFileInputKey((v) => v + 1);
+  };
+
   const submit = async (event) => {
     event.preventDefault();
     setError('');
@@ -60,79 +77,152 @@ export default function ItemsPage() {
       if (form.description) payload.append('description', form.description);
       if (form.image) payload.append('image', form.image);
 
-      await api.post('/items', payload);
-      setForm({
-        place_id: '',
-        name: '',
-        code: '',
-        quantity: 0,
-        status: 'in_store',
-        serial_number: '',
-        description: '',
-        image: null,
-      });
-      if (event.target && typeof event.target.reset === 'function') {
-        event.target.reset();
+      if (editingItemId) {
+        payload.append('_method', 'PUT');
+        await api.post(`/items/${editingItemId}`, payload);
+      } else {
+        await api.post('/items', payload);
       }
+
+      resetForm();
       await load();
     } catch (requestError) {
-      setError(requestError.response?.data?.message || 'Failed to create item.');
+      setError(requestError.response?.data?.message || 'Failed to save item.');
     }
   };
 
-  const adjustQuantity = async (id, operation) => {
+  const startEdit = (row) => {
+    setError('');
+    setEditingItemId(row.id);
+    setForm({
+      place_id: String(row.place_id || ''),
+      name: row.name || '',
+      code: row.code || '',
+      quantity: Number(row.quantity || 0),
+      status: row.status || 'in_store',
+      serial_number: row.serial_number || '',
+      description: row.description || '',
+      image: null,
+    });
+    setFileInputKey((v) => v + 1);
+  };
+
+  const deleteItem = async (id, name) => {
+    const ok = window.confirm(`Delete item \"${name}\"? This cannot be undone.`);
+    if (!ok) {
+      return;
+    }
+
     setError('');
     setBusyItemId(id);
     try {
-      await api.post(`/items/${id}/quantity`, { operation, amount: 1 });
+      await api.delete(`/items/${id}`);
       await load();
     } catch (requestError) {
-      setError(requestError.response?.data?.message || 'Failed to adjust quantity.');
+      setError(requestError.response?.data?.message || 'Failed to delete item.');
     } finally {
       setBusyItemId(null);
     }
   };
+
+  const selectAllQuantity = (event) => {
+    // Improves data entry speed by selecting full value on focus/click.
+    event.target.select();
+  };
+
+  const showEditLabels = Boolean(editingItemId);
+
+  const renderLabel = (text) =>
+    showEditLabels ? <label className="field-label">{text}</label> : null;
 
   return (
     <section>
       <h2>Items</h2>
       {error && <div className="error-box">{error}</div>}
       <form className="inline-form" onSubmit={submit}>
-        <select
-          required
-          value={form.place_id}
-          onChange={(e) => setForm({ ...form, place_id: e.target.value })}
-        >
-          <option value="">Select Place</option>
-          {places.map((place) => (
-            <option key={place.id} value={place.id}>
-              {place.name}
-            </option>
-          ))}
-        </select>
-        <input placeholder="Name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-        <input placeholder="Code" required value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setForm({ ...form, image: e.target.files?.[0] || null })}
-        />
-        <input
-          type="number"
-          min="0"
-          placeholder="Quantity"
-          value={form.quantity}
-          onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-        />
-        <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-          <option value="in_store">In-Store</option>
-          <option value="borrowed">Borrowed</option>
-          <option value="damaged">Damaged</option>
-          <option value="missing">Missing</option>
-        </select>
-        <button className="btn-primary" type="submit">
-          Add
-        </button>
+        <div className="form-field">
+          {renderLabel('Place')}
+          <select
+            required
+            value={form.place_id}
+            onChange={(e) => setForm({ ...form, place_id: e.target.value })}
+          >
+            <option value="">Select Place</option>
+            {places.map((place) => (
+              <option key={place.id} value={place.id}>
+                {place.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="form-field">
+          {renderLabel('Name')}
+          <input placeholder="Name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        </div>
+        <div className="form-field">
+          {renderLabel('Code')}
+          <input placeholder="Code" required value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
+        </div>
+        <div className="form-field">
+          {renderLabel('Image')}
+          <input
+            key={fileInputKey}
+            type="file"
+            accept="image/*"
+            onChange={(e) => setForm({ ...form, image: e.target.files?.[0] || null })}
+          />
+        </div>
+        <div className="form-field">
+          {renderLabel('Quantity')}
+          <input
+            type="number"
+            min="0"
+            placeholder="Quantity"
+            value={form.quantity}
+            onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+            onFocus={selectAllQuantity}
+            onClick={selectAllQuantity}
+          />
+        </div>
+        <div className="form-field">
+          {renderLabel('Serial Number')}
+          <input
+            placeholder="Serial Number"
+            value={form.serial_number}
+            onChange={(e) => setForm({ ...form, serial_number: e.target.value })}
+          />
+        </div>
+        <div className="form-field">
+          {renderLabel('Description')}
+          <input
+            placeholder="Description"
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+          />
+        </div>
+        <div className="form-field">
+          {renderLabel('Status')}
+          <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+            <option value="in_store">In-Store</option>
+            <option value="borrowed">Borrowed</option>
+            <option value="damaged">Damaged</option>
+            <option value="missing">Missing</option>
+          </select>
+        </div>
+        <div className="form-field form-field-action">
+          {renderLabel('Save')}
+          <button className="btn-primary" type="submit">
+            {editingItemId ? 'Update' : 'Add'}
+          </button>
+        </div>
+        {editingItemId && (
+          <div className="form-field form-field-action">
+            {renderLabel('Cancel Edit')}
+            <button className="btn-chip" type="button" onClick={resetForm}>
+              Cancel
+            </button>
+          </div>
+        )}
       </form>
       <div className="table-wrap">
         <table>
@@ -144,7 +234,7 @@ export default function ItemsPage() {
               <th>Qty</th>
               <th>Status</th>
               <th>Place</th>
-              <th>Adjust</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -169,19 +259,20 @@ export default function ItemsPage() {
                 <td>
                   <button
                     className="btn-chip"
-                    onClick={() => adjustQuantity(row.id, 'increment')}
+                    onClick={() => startEdit(row)}
                     type="button"
                     disabled={busyItemId === row.id}
                   >
-                    +
+                    Edit
                   </button>
                   <button
                     className="btn-chip"
-                    onClick={() => adjustQuantity(row.id, 'decrement')}
+                    onClick={() => deleteItem(row.id, row.name)}
                     type="button"
-                    disabled={busyItemId === row.id || Number(row.quantity) <= 0}
+                    disabled={busyItemId === row.id}
+                    style={{ color: '#7e2a1e', borderColor: '#f4b2a2' }}
                   >
-                    -
+                    Delete
                   </button>
                 </td>
               </tr>

@@ -145,6 +145,25 @@ h2 {
   margin-bottom: 0.9rem;
 }
 
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.field-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.form-field-action .btn-primary,
+.form-field-action .btn-chip {
+  margin-top: auto;
+}
+
 input,
 select {
   width: 100%;
@@ -199,6 +218,29 @@ td {
   background: #fff;
   border: 1px solid var(--line);
   margin-right: 0.3rem;
+}
+
+.log-value {
+  max-width: 360px;
+}
+
+.log-lines {
+  margin: 0;
+  white-space: normal;
+  word-break: break-word;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.log-lines > div {
+  margin-bottom: 0.12rem;
+}
+
+.log-toggle {
+  margin-top: 0.35rem;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.75rem;
 }
 
 .login-screen {
