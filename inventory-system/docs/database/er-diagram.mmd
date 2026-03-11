@@ -1,0 +1,107 @@
+erDiagram
+    users {
+        BIGINT id PK
+        VARCHAR name
+        VARCHAR email UK
+        VARCHAR role
+        TIMESTAMP email_verified_at
+        VARCHAR password
+        VARCHAR remember_token
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    cupboards {
+        BIGINT id PK
+        VARCHAR name
+        VARCHAR code UK
+        TEXT description
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    places {
+        BIGINT id PK
+        BIGINT cupboard_id FK
+        VARCHAR name
+        VARCHAR code UK
+        TEXT description
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    items {
+        BIGINT id PK
+        BIGINT place_id FK
+        VARCHAR name
+        VARCHAR code UK
+        INT quantity
+        VARCHAR serial_number
+        VARCHAR image_path
+        TEXT description
+        VARCHAR status
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    borrowings {
+        BIGINT id PK
+        BIGINT item_id FK
+        BIGINT processed_by FK
+        VARCHAR borrower_name
+        VARCHAR borrower_contact
+        DATE borrow_date
+        DATE expected_return_date
+        INT quantity_borrowed
+        VARCHAR status
+        TIMESTAMP returned_at
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    activity_logs {
+        BIGINT id PK
+        BIGINT user_id FK
+        VARCHAR action
+        VARCHAR entity_type
+        BIGINT entity_id
+        JSON old_values
+        JSON new_values
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    personal_access_tokens {
+        BIGINT id PK
+        VARCHAR tokenable_type
+        BIGINT tokenable_id
+        VARCHAR name
+        VARCHAR token UK
+        TEXT abilities
+        TIMESTAMP last_used_at
+        TIMESTAMP expires_at
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    password_resets {
+        VARCHAR email PK
+        VARCHAR token
+        TIMESTAMP created_at
+    }
+
+    failed_jobs {
+        BIGINT id PK
+        VARCHAR uuid UK
+        TEXT connection
+        TEXT queue
+        TEXT payload
+        TEXT exception
+        TIMESTAMP failed_at
+    }
+
+    cupboards ||--o{ places : contains
+    places ||--o{ items : stores
+    items ||--o{ borrowings : borrowed_in
+    users ||--o{ borrowings : processed_by
+    users o|--o{ activity_logs : performs
