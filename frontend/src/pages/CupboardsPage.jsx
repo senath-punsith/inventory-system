@@ -6,7 +6,7 @@ export default function CupboardsPage() {
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({ name: '', code: '', description: '' });
+  const [form, setForm] = useState({ name: '', code: '' });
 
   const load = async () => {
     const response = await api.get('/cupboards');
@@ -28,7 +28,7 @@ export default function CupboardsPage() {
         await api.post('/cupboards', form);
       }
 
-      setForm({ name: '', code: '', description: '' });
+      setForm({ name: '', code: '' });
       setEditingId(null);
       await load();
     } catch (requestError) {
@@ -42,13 +42,12 @@ export default function CupboardsPage() {
     setForm({
       name: row.name || '',
       code: row.code || '',
-      description: row.description || '',
     });
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setForm({ name: '', code: '', description: '' });
+    setForm({ name: '', code: '' });
   };
 
   const deleteCupboard = async (id, name) => {
@@ -91,11 +90,6 @@ export default function CupboardsPage() {
           value={form.code}
           onChange={(e) => setForm({ ...form, code: e.target.value })}
           required
-        />
-        <input
-          placeholder="Description"
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
         />
         <button className="btn-primary" type="submit">
           {editingId ? 'Save' : 'Add'}
